@@ -48,13 +48,17 @@ library(stringr)
 
 ## Locate the data (in the file explorer) and load it in R
 ```{r}
+#install.packages("readxl")
 #Download ‘readxl’ package
 #Load the ‘readxl’ package
-
+library(readxl)
 #Add data location as variable
+data_location <- paste0(getwd(),"/Data/NMR_data.xlsx")
 #Read the first tab of the data file
-
+metabolomicsData <- read_excel(data_location, 1)
 #Make a copy of the data to compare against if needed
+metabolomicsData
+head(metabolomicsData)
 ```
 
 ## Second programming tasks
@@ -70,9 +74,26 @@ sum(is.na(metabolomicsData$`Sample name` == "...")) ##Fill in the missing inform
 # Install the required package
 ####..... missing step ...####
 ####..... missing step ...####
-
+install.packages('heatmaply')
 #Visualize this information in a heatmap
-heatmaply::heatmaply(is.na10(metabolomicsData[,3:100], grid_gap = 1, colors = heat.colors(200), showticklabels = c(T, F), margins = c(80, 10)))
+heatmaply::heatmaply(metabolomicsData[,3:100], grid_gap = 1, colors = heat.colors(200), showticklabels = c(T, F), margins = c(80, 10))
+```
+```{r}
+# Library
+library(ggplot2)
+library(reshape2)
+
+
+
+data <- cor(metabolomicsData[sapply(metabolomicsData,is.numeric)])
+
+data1 <- melt(data)
+
+ggplot(data1, aes(x = Var1, y = Var2, fill = value)) +
+geom_tile() +
+labs(title = "Correlation Heatmap",
+	x = "Variable 1",
+	y = "Variable 2")
 ```
 
 ## Third programming tasks
@@ -84,19 +105,76 @@ metabolomicsData <- data.frame(metabolomicsData[,1:2], lapply(metabolomicsData[,
 metabolomicsData <- metabolomicsData[complete.cases(metabolomicsData[ , 3:length(metabolomicsData)]),]
 
 # Visualize all information in a heatmap
+# Ensure you have the required packages
+#
+#install.packages(c("reshape2", "ggplot2"))
+
+#install.packages("reshape2")
+#nstall.packages("ggplot2")
+
+# Load the packages
+library(reshape2)
+library(ggplot2)
+
+# Assuming your data frame is named 'df'
+# Melt the data frame to convert it into a format suitable for heatmap
+df = select_if(metabolomicsData, is.numeric)
+df_melted <- melt(df)
+
+# Create the heatmap
+ggplot(df_melted, aes(x=variable, y=Var2, fill=value)) + 
+  geom_tile(color = FALSE) +
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = (max(df) + min(df)) / 2, 
+                       space = "Lab", 
+                       name="Value") +
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12)) +
+  coord_fixed()
+
 ####..... missing step ...#### Tip: use the previous line of code for heatmaply, without counting NAs. When in doubt, type ?heatmaply in the console below, to open a help menu for this function and example.
+```
+
+```{r}
+# Load the necessary libraries
+library(reshape2)
+library(ggplot2)
+
+# Load the data
+
+
+# Melt the data to create a long format
+df_melt <- reshape2::melt(metabolomicsData, id.vars = c("id", "group"), 
+                           variable.name = "variable", 
+                           value.name = "value")
+
+# Create the heatmap
+ggplot(df_melt, aes(x = variable, y = group, fill = value)) + 
+  geom_tile() + 
+  scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                       midpoint = median(df_melt$value), 
+                       space = "Lab", 
+                       name="Value") + 
+  theme_minimal() + 
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                   size = 12, hjust = 1),
+        axis.text.y = element_text(size = 12)) + 
+  labs(x = "Variables", y = "Groups", 
+       fill = "Values")
 ```
 
 ## Fourth programming tasks: check data distribution
 ```{r}
 #filter out data if the 'Sample name' column is NA 
-metabolomicsData <- subset(metabolomicsData, !is.na(metabolomicsData$...))
+metabolomicsData <- subset(metabolomicsData, !is.na(metabolomicsData$`Sample name`))
 
 # Inspect the remaining samples names; do any stand out (in a negative way)? If yes, remove these. Note: != stands for 'is not equal to'
-metabolomicsData <- subset(metabolomicsData, metabolomicsData$Sample.name != '...')
+metabolomicsData <- subset(metabolomicsData, metabolomicsData$`Sample name` != 'missing Gex')
 
 # Download the file 'targets.csv' from Surfdrive, add this to the Data folder, and change the location of data you want to load
-dataLocation <- paste0(getwd(), '/Data/ ... .csv')
+dataLocation <- paste0(getwd(), '/Data/targets.csv')
 
 # Load the targets data
 treatmentData <- read.csv(dataLocation, header = TRUE)
@@ -104,13 +182,13 @@ treatmentData <- read.csv(dataLocation, header = TRUE)
 # Clean up the sample names (since they are not the same for metabolomics)
 treatmentData$SampleName<-gsub("X","",as.character(treatmentData$SampleName)) #Remove the 'X' from sample names
 treatmentData$SampleName<-gsub("\\..*","",as.character(treatmentData$SampleName)) #Remove all data after the '.'
-treatmentData$...<-gsub("line","",as.character(treatmentData$...)) #Remove the word 'line' in the second column (Timepoint)
+treatmentData$Timepoint<-gsub("line","",as.character(treatmentData$Timepoint)) #Remove the word 'line' in the second column (Timepoint)
 
 #rename columns of treatmentData to match with metabolomics data
-colnames(treatmentData) <- c("Sample.name","Timepoint","Diet" )
+colnames(treatmentData) <- c("Sample name","Timepoint","Diet" )
 
 # Finally, combine this data (specifically column 3 from targets data) with the metabolomics data
-metabolomicsDataGroups <- merge(treatmentData, metabolomicsData,by="Sample.name")
+metabolomicsDataGroups <- merge(treatmentData, metabolomicsData,by="Sample name")
 
 #Sanity check: do all the timepoints (base,end) from treatmentData match with the metabolomics data time column
 all(metabolomicsDataGroups$Timepoint == metabolomicsDataGroups$time) ##If this is FALSE, please check your data against the Copy you made at the start.
